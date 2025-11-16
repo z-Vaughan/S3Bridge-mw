@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Universal S3 Library - Account-agnostic credential service'
+
+Parameters:
+  AdminUsername:
+    Type: String
+    Description: Username for universal service access
+    Default: admin
+
+Resources:
+  # Lambda execution role
+  UniversalS3LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: universal-s3-lambda-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: AssumeServiceRoles
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sts:AssumeRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/service-role/*-s3-access-role'
+
+  # Credential service Lambda
+  UniversalCredentialService:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: universal-credential-service
+      Runtime: python3.9
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt UniversalS3LambdaRole.Arn
+      Environment:
+        Variables:
+          AWS_ACCOUNT_ID: !Ref AWS::AccountId
+          ADMIN_USERNAME: !Ref AdminUsername
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'Placeholder - will be updated'}
+
+  # Midway authorizer Lambda
+  UniversalMidwayAuthorizer:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: universal-midway-authorizer
+      Runtime: python3.9
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt UniversalS3LambdaRole.Arn
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'Placeholder - will be updated'}
+
+  # API Gateway
+  UniversalS3Api:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: universal-s3-library
+      Description: Universal S3 credential service API
+
+  # API Gateway authorizer
+  MidwayAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: universal-midway-auth
+      Type: TOKEN
+      RestApiId: !Ref UniversalS3Api
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UniversalMidwayAuthorizer.Arn}/invocations'
+      IdentitySource: method.request.header.Cookie
+
+  # Credentials resource
+  CredentialsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref UniversalS3Api
+      ParentId: !GetAtt UniversalS3Api.RootResourceId
+      PathPart: credentials
+
+  # GET method
+  CredentialsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref UniversalS3Api
+      ResourceId: !Ref CredentialsResource
+      HttpMethod: GET
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref MidwayAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UniversalCredentialService.Arn}/invocations'
+
+  # API deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: CredentialsMethod
+    Properties:
+      RestApiId: !Ref UniversalS3Api
+      StageName: prod
+
+  # Lambda permissions
+  AuthorizerInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UniversalMidwayAuthorizer
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${UniversalS3Api}/authorizers/*'
+
+  CredentialServiceInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UniversalCredentialService
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${UniversalS3Api}/*/*'
+
+Outputs:
+  ApiGatewayUrl:
+    Description: API Gateway URL for credential service
+    Value: !Sub 'https://${UniversalS3Api}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiUrl'
+  
+  LambdaRoleArn:
+    Description: Lambda execution role ARN
+    Value: !GetAtt UniversalS3LambdaRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaRole'
