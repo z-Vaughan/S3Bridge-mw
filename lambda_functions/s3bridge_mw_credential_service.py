@@ -30,7 +30,7 @@ def get_service_config():
 
 def lambda_handler(event, context):
     """
-    Universal credential service - returns temporary AWS credentials for registered services
+    S3Bridge Midway credential service - returns temporary AWS credentials for registered services
     """
     
     try:

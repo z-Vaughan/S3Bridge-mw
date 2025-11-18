@@ -1,2 +1,2 @@
 [console_scripts]
-s3bridge-mw = scripts.cli:main
+s3bridge-mw = s3bridge_mw.cli:main

@@ -1,17 +1,16 @@
 import json
-import base64
-import re
-import urllib.parse
 
 def lambda_handler(event, context):
     """
-    Universal Midway authorizer - validates Midway cookies and extracts user identity
+    S3Bridge Midway authorizer - validates Midway cookies
     """
     
     try:
+        print(f"Authorizer event: {json.dumps(event)}")
         # Extract cookies from headers or authorizationToken
         headers = event.get('headers', {})
         cookies = headers.get('Cookie', '') or headers.get('cookie', '') or event.get('authorizationToken', '')
+        print(f"Cookies: {cookies[:100]}...")
         
         # Required Midway cookies for authentication
         required_cookies = ['amazon_enterprise_access', 'session']
@@ -26,6 +25,10 @@ def lambda_handler(event, context):
         user_id = 'unknown'
         if 'amazon_enterprise_access' in cookies:
             try:
+                import urllib.parse
+                import base64
+                import re
+                
                 # Parse cookie value to extract user ID
                 cookie_parts = cookies.split(';')
                 for part in cookie_parts:
@@ -45,14 +48,16 @@ def lambda_handler(event, context):
                                 payload_decoded = base64.b64decode(payload).decode('utf-8')
                                 
                                 # Look for logged_in_username in JWT payload
-                                username_match = re.search(r'"logged_in_username"\\s*:\\s*"([^"]+)"', payload_decoded)
+                                print(f"JWT payload: {payload_decoded[:200]}...")
+                                username_match = re.search(r'"logged_in_username"\s*:\s*"([^"]+)"', payload_decoded)
                                 if username_match:
                                     user_id = username_match.group(1)
+                                    print(f"Extracted user ID: {user_id}")
                                     break
                         except Exception:
                             pass
                         
-                        # Fallback: if we find specific username anywhere, use it
+                        # Fallback: if we find 'zavaugha' anywhere, use it
                         if user_id == 'unknown' and 'zavaugha' in decoded.lower():
                             user_id = 'zavaugha'
                         
@@ -64,9 +69,12 @@ def lambda_handler(event, context):
             except Exception:
                 user_id = 'authenticated_user'
         
+        print(f"Final user ID: {user_id}")
+        
         # User access control (example restrictions)
         restricted_users = ['test_user', 'demo_user']
         if user_id in restricted_users:
+            print(f"User {user_id} is restricted")
             raise Exception('Unauthorized - User access restricted')
         
         # Generate allow policy with user context
@@ -91,5 +99,6 @@ def lambda_handler(event, context):
         return policy
         
     except Exception as e:
+        print(f"Authorizer error: {str(e)}")
         # Return deny policy for any error
         raise Exception('Unauthorized')

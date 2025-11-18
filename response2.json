@@ -1,0 +1,1 @@
+{"errorMessage": "Unauthorized", "errorType": "Exception", "requestId": "d1c64b90-49de-46f3-9b4c-b27d036aa4ec", "stackTrace": ["  File \"/var/task/lambda_function.py\", line 104, in lambda_handler\n    raise Exception('Unauthorized')\n"]}

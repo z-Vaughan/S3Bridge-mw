@@ -8,9 +8,6 @@ import argparse
 import sys
 from pathlib import Path
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 def main():
     parser = argparse.ArgumentParser(
         prog='s3bridge-mw',
@@ -75,6 +72,7 @@ Examples:
     
     # Route to appropriate script
     if args.command == 'setup':
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from scripts.setup import main as setup_main
         sys.argv = ['setup.py', '--admin-user', args.admin_user]
         if args.force:
@@ -82,6 +80,7 @@ Examples:
         return setup_main()
     
     elif args.command == 'add':
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from scripts.add_service import main as add_main
         sys.argv = ['add_service.py', args.service_name, args.bucket_patterns, 
                    '--permissions', args.permissions]
@@ -92,10 +91,12 @@ Examples:
         return add_main()
     
     elif args.command == 'list':
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from scripts.list_services import main as list_main
         return list_main()
     
     elif args.command == 'edit':
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from scripts.edit_service import main as edit_main
         sys.argv = ['edit_service.py', args.service_name]
         if args.bucket_patterns:
@@ -107,6 +108,7 @@ Examples:
         return edit_main()
     
     elif args.command == 'remove':
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from scripts.remove_service import main as remove_main
         sys.argv = ['remove_service.py', args.service_name]
         if args.force:
@@ -114,6 +116,7 @@ Examples:
         return remove_main()
     
     elif args.command == 'status':
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from scripts.list_services import main as status_main
         return status_main()
 

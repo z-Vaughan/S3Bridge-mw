@@ -1,0 +1,7 @@
+{
+  "account_id": "211125677447",
+  "region": "us-east-1",
+  "api_gateway_url": "https://a1e158ppgd.execute-api.us-east-1.amazonaws.com/prod",
+  "admin_username": "zavaugha",
+  "stack_name": "s3bridge-mw"
+}

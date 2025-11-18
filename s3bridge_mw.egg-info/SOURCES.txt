@@ -1,5 +1,9 @@
 README.md
 setup.py
+s3bridge_mw/__init__.py
+s3bridge_mw/cli.py
+s3bridge_mw/s3bridge_auth.py
+s3bridge_mw/s3bridge_client.py
 s3bridge_mw.egg-info/PKG-INFO
 s3bridge_mw.egg-info/SOURCES.txt
 s3bridge_mw.egg-info/dependency_links.txt
@@ -8,12 +12,8 @@ s3bridge_mw.egg-info/requires.txt
 s3bridge_mw.egg-info/top_level.txt
 scripts/__init__.py
 scripts/add_service.py
-scripts/cli.py
 scripts/deploy_lambda_only.py
 scripts/edit_service.py
 scripts/list_services.py
 scripts/remove_service.py
 scripts/setup.py
-src/__init__.py
-src/universal_auth.py
-src/universal_s3_client.py

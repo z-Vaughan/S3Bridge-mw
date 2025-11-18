@@ -28,7 +28,7 @@ class AWSConfig:
     @property
     def lambda_role_arn(self):
         """Lambda execution role ARN"""
-        return f"arn:aws:iam::{self.account_id}:role/universal-s3-lambda-role"
+        return f"arn:aws:iam::{self.account_id}:role/s3bridge-mw-lambda-role"
     
     def service_role_arn(self, service_name):
         """Service-specific IAM role ARN"""
@@ -37,7 +37,7 @@ class AWSConfig:
     @property
     def stack_name(self):
         """CloudFormation stack name"""
-        return "universal-s3-library"
+        return "s3bridge-mw"
     
     def get_api_gateway_url(self):
         """Get deployed API Gateway URL from CloudFormation"""

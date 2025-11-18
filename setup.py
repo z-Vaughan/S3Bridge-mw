@@ -10,7 +10,7 @@ setup(
     description="Account-agnostic credential service for secure S3 access with Midway authentication",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=find_packages() + ['scripts'],
+    packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -28,7 +28,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "s3bridge-mw=scripts.cli:main",
+            "s3bridge-mw=s3bridge_mw.cli:main",
         ],
     },
     include_package_data=True,

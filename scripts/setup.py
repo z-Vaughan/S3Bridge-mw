@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Universal S3 Library Setup Script
+S3Bridge Midway Setup Script
 Deploys infrastructure to any AWS account
 """
 
@@ -19,14 +19,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config.aws_config import AWSConfig
 
 def find_existing_api_gateway():
-    """Find existing API Gateway that uses universal-credential-service"""
+    """Find existing API Gateway that uses s3bridge-mw-credential-service"""
     try:
         api_client = boto3.client('apigateway')
         lambda_client = boto3.client('lambda')
         
-        # Get universal-credential-service function ARN
+        # Get s3bridge-mw-credential-service function ARN
         try:
-            func_response = lambda_client.get_function(FunctionName='universal-credential-service')
+            func_response = lambda_client.get_function(FunctionName='s3bridge-mw-credential-service')
             target_function_arn = func_response['Configuration']['FunctionArn']
         except lambda_client.exceptions.ResourceNotFoundException:
             return None
@@ -53,7 +53,7 @@ def find_existing_api_gateway():
                             
                             # Check if integration points to our Lambda function
                             integration_uri = integration.get('uri', '')
-                            if 'universal-credential-service' in integration_uri:
+                            if 's3bridge-mw-credential-service' in integration_uri:
                                 return api_id
                                 
                         except Exception:
@@ -80,11 +80,11 @@ def create_lambda_zip(lambda_dir, function_name):
     return zip_buffer.getvalue()
 
 def deploy_infrastructure(admin_username='admin', force=False):
-    """Deploy Universal S3 Library infrastructure"""
+    """Deploy S3Bridge Midway infrastructure"""
     
     config = AWSConfig()
     
-    print(f"🚀 Deploying Universal S3 Library to account {config.account_id}")
+    print(f"🚀 Deploying S3Bridge Midway to account {config.account_id}")
     print(f"📍 Region: {config.region}")
     print(f"👤 Admin user: {admin_username}")
     
@@ -92,7 +92,7 @@ def deploy_infrastructure(admin_username='admin', force=False):
     existing_api = find_existing_api_gateway()
     if existing_api:
         print(f"🔍 Found existing API Gateway: {existing_api}")
-        if not args.force:
+        if not force:
             print("⚠️  Infrastructure already deployed. Use --force to redeploy.")
             # Save configuration with existing API
             api_url = f"https://{existing_api}.execute-api.us-east-1.amazonaws.com/prod/credentials"
@@ -102,7 +102,7 @@ def deploy_infrastructure(admin_username='admin', force=False):
             return True
     
     # Check if CloudFormation stack already deployed
-    if config.is_deployed() and not args.force:
+    if config.is_deployed() and not force:
         print("⚠️  CloudFormation stack already deployed. Use --force to redeploy.")
         return False
     
@@ -140,11 +140,11 @@ def deploy_infrastructure(admin_username='admin', force=False):
         # Save configuration
         config.save_deployment_config(api_url, admin_username)
         
-        print(f"🎉 Universal S3 Library deployed successfully!")
+        print(f"🎉 S3Bridge Midway deployed successfully!")
         print(f"🔗 API URL: {api_url}")
         print(f"📝 Next steps:")
-        print(f"   1. Add services: python -m universal_s3_library.add_service myapp 'myapp-*'")
-        print(f"   2. Use in code: from universal_s3_library import UniversalS3Client")
+        print(f"   1. Add services: s3bridge-mw add myapp 'myapp-*'")
+        print(f"   2. Use in code: from s3bridge_mw import S3BridgeClient")
         
         return True
         
@@ -159,15 +159,15 @@ def deploy_lambda_functions(config):
     lambda_dir = Path(__file__).parent.parent / "lambda_functions"
     
     functions = [
-        'universal_credential_service',
-        'universal_midway_authorizer'
+        ('s3bridge_mw_credential_service', 's3bridge-mw-credential-service'),
+        ('s3bridge_mw_midway_authorizer', 's3bridge-mw-authorizer')
     ]
     
-    for function_name in functions:
+    for file_name, function_name in functions:
         print(f"📤 Deploying {function_name}...")
         
         # Create deployment package
-        zip_content = create_lambda_zip(lambda_dir, function_name)
+        zip_content = create_lambda_zip(lambda_dir, file_name)
         
         # Update function code
         try:
@@ -180,7 +180,7 @@ def deploy_lambda_functions(config):
             print(f"⚠️  Failed to deploy {function_name}: {e}")
 
 def main():
-    parser = argparse.ArgumentParser(description='Deploy Universal S3 Library')
+    parser = argparse.ArgumentParser(description='Deploy S3Bridge Midway')
     parser.add_argument('--admin-user', default='admin', 
                        help='Username for universal service access')
     parser.add_argument('--force', action='store_true',
