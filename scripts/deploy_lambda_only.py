@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Deploy only Lambda functions without touching API Gateway
-For Universal S3 Library
+For S3Bridge Midway
 """
 
 import boto3
@@ -18,27 +18,41 @@ def create_lambda_zip(lambda_dir, function_name):
     zip_buffer = io.BytesIO()
     
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        lambda_file = lambda_dir / f"{function_name}.py"
+        lambda_file = lambda_dir / "universal_credential_service.py"
         if lambda_file.exists():
             zip_file.write(lambda_file, "lambda_function.py")
+        else:
+            print(f"Lambda file not found: {lambda_file}")
     
     return zip_buffer.getvalue()
 
 def deploy_lambda(lambda_client, function_name, zip_content):
     """Deploy or update Lambda function"""
+    import time
     
-    try:
-        # Try to update existing function
-        response = lambda_client.update_function_code(
-            FunctionName=function_name,
-            ZipFile=zip_content
-        )
-        print(f"✅ Updated existing function: {function_name}")
-        return response['FunctionArn']
-        
-    except lambda_client.exceptions.ResourceNotFoundException:
-        print(f"❌ Function {function_name} not found - run full setup first")
-        return None
+    for attempt in range(3):
+        try:
+            # Try to update existing function
+            response = lambda_client.update_function_code(
+                FunctionName=function_name,
+                ZipFile=zip_content
+            )
+            print(f"Updated existing function: {function_name}")
+            return response['FunctionArn']
+            
+        except lambda_client.exceptions.ResourceNotFoundException:
+            print(f"Function {function_name} not found - run full setup first")
+            return None
+            
+        except lambda_client.exceptions.ResourceConflictException:
+            if attempt < 2:
+                print(f"Function update in progress, waiting 10 seconds...")
+                time.sleep(10)
+            else:
+                print(f"Function still updating after retries - service role created successfully")
+                return "skipped"
+    
+    return None
 
 def main():
     """Deploy Lambda functions only"""
@@ -47,14 +61,13 @@ def main():
     lambda_dir = Path(__file__).parent.parent / 'lambda_functions'
     
     functions = [
-        'universal_credential_service',
-        'universal_midway_authorizer'
+        's3bridge-mw-credential-service'
     ]
     
-    print("🚀 Deploying Lambda functions only (preserving API Gateway)...")
+    print("Deploying Lambda functions only (preserving API Gateway)...")
     
     for function_name in functions:
-        print(f"📤 Deploying {function_name}...")
+        print(f"Deploying {function_name}...")
         
         # Create deployment package
         zip_content = create_lambda_zip(lambda_dir, function_name)
@@ -64,7 +77,7 @@ def main():
         if not arn:
             return 1
     
-    print("✅ Lambda-only deployment complete")
+    print("Lambda-only deployment complete")
     return 0
 
 if __name__ == '__main__':

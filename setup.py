@@ -4,13 +4,13 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="universal-s3-library",
+    name="s3bridge-mw",
     version="1.0.0",
     author="Universal S3 Team",
-    description="Account-agnostic credential service for secure S3 access",
+    description="Account-agnostic credential service for secure S3 access with Midway authentication",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=find_packages(),
+    packages=find_packages() + ['scripts'],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -28,8 +28,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "universal-s3-setup=scripts.setup:main",
-            "universal-s3-add-service=scripts.add_service:main",
+            "s3bridge-mw=scripts.cli:main",
         ],
     },
     include_package_data=True,

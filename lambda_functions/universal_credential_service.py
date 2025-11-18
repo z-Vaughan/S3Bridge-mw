@@ -6,28 +6,27 @@ from datetime import datetime
 def get_service_config():
     """Load service configuration from environment variables"""
     
-    # Base configuration
-    config = {}
+    services = {}
+    
+    # Add universal service if admin username is set
+    admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
+    if admin_username:
+        services['universal'] = {
+            'role': f"arn:aws:iam::{os.environ['AWS_ACCOUNT_ID']}:role/service-role/universal-s3-access-role",
+            'buckets': ['*'],
+            'restricted_users': [admin_username]
+        }
     
     # Load services from environment variables
     for key, value in os.environ.items():
         if key.startswith('SERVICE_'):
             service_name = key[8:].lower()  # Remove 'SERVICE_' prefix
             try:
-                config[service_name] = json.loads(value)
+                services[service_name] = json.loads(value)
             except json.JSONDecodeError:
                 continue
     
-    # Add universal service if admin username is set
-    admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-    if admin_username:
-        config['universal'] = {
-            'role': f"arn:aws:iam::{os.environ['AWS_ACCOUNT_ID']}:role/service-role/universal-s3-access-role",
-            'buckets': ['*'],
-            'restricted_users': [admin_username]
-        }
-    
-    return config
+    return services
 
 def lambda_handler(event, context):
     """
@@ -56,7 +55,7 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': f'Unknown service: {service_name}'})
             }
         
-        # Extract user ID from request context (set by authorizer)
+        # Extract user ID from request context (set by midway authorizer)
         authorizer_context = event.get('requestContext', {}).get('authorizer', {})
         user_id = authorizer_context.get('userId') or authorizer_context.get('principalId', 'unknown')
         

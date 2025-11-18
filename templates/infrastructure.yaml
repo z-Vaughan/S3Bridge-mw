@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Universal S3 Library - Account-agnostic credential service'
+Description: 'S3Bridge Midway - Account-agnostic credential service with Midway auth'
 
 Parameters:
   AdminUsername:
@@ -9,10 +9,10 @@ Parameters:
 
 Resources:
   # Lambda execution role
-  UniversalS3LambdaRole:
+  S3BridgeMwLambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: universal-s3-lambda-role
+      RoleName: s3bridge-mw-lambda-role
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -32,13 +32,13 @@ Resources:
                 Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/service-role/*-s3-access-role'
 
   # Credential service Lambda
-  UniversalCredentialService:
+  S3BridgeMwCredentialService:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: universal-credential-service
+      FunctionName: s3bridge-mw-credential-service
       Runtime: python3.9
       Handler: lambda_function.lambda_handler
-      Role: !GetAtt UniversalS3LambdaRole.Arn
+      Role: !GetAtt S3BridgeMwLambdaRole.Arn
       Environment:
         Variables:
           AWS_ACCOUNT_ID: !Ref AWS::AccountId
@@ -49,48 +49,48 @@ Resources:
               return {'statusCode': 200, 'body': 'Placeholder - will be updated'}
 
   # Midway authorizer Lambda
-  UniversalMidwayAuthorizer:
+  S3BridgeMwAuthorizer:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: universal-midway-authorizer
+      FunctionName: s3bridge-mw-authorizer
       Runtime: python3.9
       Handler: lambda_function.lambda_handler
-      Role: !GetAtt UniversalS3LambdaRole.Arn
+      Role: !GetAtt S3BridgeMwLambdaRole.Arn
       Code:
         ZipFile: |
           def lambda_handler(event, context):
               return {'statusCode': 200, 'body': 'Placeholder - will be updated'}
 
   # API Gateway
-  UniversalS3Api:
+  S3BridgeMwApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
-      Name: universal-s3-library
-      Description: Universal S3 credential service API
+      Name: s3bridge-mw
+      Description: S3Bridge Midway credential service API
 
   # API Gateway authorizer
   MidwayAuthorizer:
     Type: AWS::ApiGateway::Authorizer
     Properties:
-      Name: universal-midway-auth
+      Name: s3bridge-mw-auth
       Type: TOKEN
-      RestApiId: !Ref UniversalS3Api
-      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UniversalMidwayAuthorizer.Arn}/invocations'
+      RestApiId: !Ref S3BridgeMwApi
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${S3BridgeMwAuthorizer.Arn}/invocations'
       IdentitySource: method.request.header.Cookie
 
   # Credentials resource
   CredentialsResource:
     Type: AWS::ApiGateway::Resource
     Properties:
-      RestApiId: !Ref UniversalS3Api
-      ParentId: !GetAtt UniversalS3Api.RootResourceId
+      RestApiId: !Ref S3BridgeMwApi
+      ParentId: !GetAtt S3BridgeMwApi.RootResourceId
       PathPart: credentials
 
   # GET method
   CredentialsMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      RestApiId: !Ref UniversalS3Api
+      RestApiId: !Ref S3BridgeMwApi
       ResourceId: !Ref CredentialsResource
       HttpMethod: GET
       AuthorizationType: CUSTOM
@@ -98,42 +98,42 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UniversalCredentialService.Arn}/invocations'
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${S3BridgeMwCredentialService.Arn}/invocations'
 
   # API deployment
   ApiDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn: CredentialsMethod
     Properties:
-      RestApiId: !Ref UniversalS3Api
+      RestApiId: !Ref S3BridgeMwApi
       StageName: prod
 
   # Lambda permissions
   AuthorizerInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref UniversalMidwayAuthorizer
+      FunctionName: !Ref S3BridgeMwAuthorizer
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${UniversalS3Api}/authorizers/*'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${S3BridgeMwApi}/authorizers/*'
 
   CredentialServiceInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref UniversalCredentialService
+      FunctionName: !Ref S3BridgeMwCredentialService
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${UniversalS3Api}/*/*'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${S3BridgeMwApi}/*/*'
 
 Outputs:
   ApiGatewayUrl:
     Description: API Gateway URL for credential service
-    Value: !Sub 'https://${UniversalS3Api}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Value: !Sub 'https://${S3BridgeMwApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
     Export:
       Name: !Sub '${AWS::StackName}-ApiUrl'
   
   LambdaRoleArn:
     Description: Lambda execution role ARN
-    Value: !GetAtt UniversalS3LambdaRole.Arn
+    Value: !GetAtt S3BridgeMwLambdaRole.Arn
     Export:
       Name: !Sub '${AWS::StackName}-LambdaRole'
