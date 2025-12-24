@@ -1,0 +1,5 @@
+config/__pycache__/aws_config.cpython-314.pyc
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
